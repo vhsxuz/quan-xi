@@ -1,26 +1,87 @@
-import React, { useEffect } from 'react';
-import { Box, Button, Flex, Heading } from '@chakra-ui/react';
+import { Box, Button, Flex, Heading, Image, Text, extendTheme } from '@chakra-ui/react';
 import { FaGithub } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { error } from 'console';
 
-
-const CLIENT_ID = '19d575484da3e7969f2a'
+const CLIENT_ID = '32236f358755f224b330'
+interface githubUserData {
+  login?: string,
+  id?: string,
+  node_id?: string,
+  avatar_url?: string,
+  url?: string,
+}
 
 const Navbar = () => {
+
+  const navigate = useNavigate()
+  const [renderer, setRenderer] = useState(false)
+  const [userData, setUserData] = useState<githubUserData>({})
 
   useEffect(() => {
     // http://localhost:3000/?code=a440014735f792574eb2
     const queryString = window.location.search
     const urlSearchParam = new URLSearchParams(queryString)
     const codeParam = urlSearchParam.get('code')
-    console.log(codeParam)
+
+    if(codeParam && (localStorage.getItem('access') === null)) {
+      getAccessToken()
+    }
+    
+    async function getAccessToken() {
+      await fetch("http://localhost:8000/getAccessToken?code=" + codeParam, {
+        method: "GET"
+      }).then((response) => {
+        return response.json();
+      }).then((data) => {
+        console.log(data)
+        if(data.access_token) {
+          localStorage.setItem('accessToken', data.access_token)
+          getUserData()
+          setRenderer(!renderer)
+        }
+      })
+    }
   }, [])
+
+async function getUserData() {
+  try {
+    const response = await fetch('http://localhost:8000/getUserData', {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + localStorage.getItem('accessToken'),
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok.');
+    }
+
+    const data = await response.json();
+    setUserData(data)
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+  function logout() {
+    localStorage.removeItem('accessToken')
+    setRenderer(!renderer)
+    navigate('/')
+  }
 
   function loginWithGithub() {
     window.location.assign('https://github.com/login/oauth/authorize?client_id=' + CLIENT_ID)
+    navigate('/')
   }
 
+  // function redirectToHome() {
+
+  // }
+
   return (
-    <Box bg="blue.900" p={4}>
+    <Box bg="brand.100" p={4}>
       <Flex alignItems="center" justifyContent="space-between">
         <Box>
           <Heading as="h1" size="lg" color="white">
@@ -28,9 +89,25 @@ const Navbar = () => {
           </Heading>
         </Box>
         <Box>
-          <Button colorScheme="telegram" size="sm" leftIcon={<FaGithub />} onClick={loginWithGithub}>
-            Login With Github
-          </Button>
+          <Heading>
+            {localStorage.getItem('accessToken')?
+            <>
+            <Image 
+            src={userData.avatar_url}
+            boxSize='100px'
+            ></Image>
+              <Button colorScheme="telegram" size="sm" onClick={logout}>
+                Logout
+              </Button>
+            </>
+            :
+            <>
+              <Button colorScheme="telegram" size="sm" leftIcon={<FaGithub />} onClick={loginWithGithub}>
+                Login With Github
+              </Button>
+            </>
+            }
+          </Heading>
         </Box>
       </Flex>
     </Box>
