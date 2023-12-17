@@ -20,7 +20,6 @@ const Navbar = () => {
   const [userData, setUserData] = useState<githubUserData>({})
 
   useEffect(() => {
-    // http://localhost:3000/?code=a440014735f792574eb2
     const queryString = window.location.search
     const urlSearchParam = new URLSearchParams(queryString)
     const codeParam = urlSearchParam.get('code')
@@ -30,19 +29,26 @@ const Navbar = () => {
     }
     
     async function getAccessToken() {
-      await fetch("http://localhost:8000/getAccessToken?code=" + codeParam, {
-        method: "GET"
-      }).then((response) => {
-        return response.json();
-      }).then((data) => {
-        console.log(data)
-        if(data.access_token) {
-          localStorage.setItem('accessToken', data.access_token)
-          getUserData()
-          setRenderer(!renderer)
+      try {
+        const response = await fetch("http://localhost:8000/getAccessToken?code=" + codeParam, {
+          method: "GET"
+        });
+        if (!response.ok) {
+          throw new Error('Network response was not ok.');
         }
-      })
+        const data = await response.json();
+        console.log(data); // Log the data received from the response
+        if (data.access_token) {
+          localStorage.setItem('accessToken', data.access_token);
+          getUserData();
+          setRenderer(!renderer);
+          navigate('/challenge-list');
+        }
+      } catch (error) {
+        console.error('Error fetching access token:', error);
+      }
     }
+    
   }, [])
 
 async function getUserData() {
@@ -73,12 +79,7 @@ async function getUserData() {
 
   function loginWithGithub() {
     window.location.assign('https://github.com/login/oauth/authorize?client_id=' + CLIENT_ID)
-    navigate('/')
   }
-
-  // function redirectToHome() {
-
-  // }
 
   return (
     <Box bg="brand.100" p={4}>
